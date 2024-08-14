@@ -1,0 +1,83 @@
+const std = @import("std");
+const testing = std.testing;
+const mem = std.mem;
+const Uri = std.Uri;
+const ParseError = std.Uri.ParseError;
+const StringHashMap = @import("std").StringHashMap;
+
+pub const URL = @This();
+
+allocator: std.mem.Allocator = std.heap.page_allocator,
+
+uri: Uri = undefined,
+querymap: StringHashMap([]const u8) = StringHashMap([]const u8).init(std.heap.page_allocator),
+
+pub fn init(self: URL) URL {
+    return .{
+        .allocator = self.allocator,
+        .uri = self.uri,
+        .querymap = self.querymap,
+    };
+}
+
+pub fn parse(self: *URL, text: []const u8) ParseError!*URL {
+    self.uri = try Uri.parse(text);
+    self.querymap = self.queryMap();
+    return self;
+}
+
+pub fn query(self: *URL) []const u8 {
+    return self.uri.query.?.percent_encoded;
+}
+
+pub fn scheme(self: *URL) []const u8 {
+    return self.uri.scheme;
+}
+pub fn host(self: *URL) []const u8 {
+    return self.uri.host.?.percent_encoded;
+}
+pub fn path(self: *URL) []const u8 {
+    return self.uri.path.percent_encoded;
+}
+
+pub fn queryMap(self: *URL) StringHashMap([]const u8) {
+    var queryitmes = std.mem.splitSequence(u8, self.query(), "&");
+    while (true) {
+        const pair = queryitmes.next();
+        if (pair == null) {
+            break;
+        }
+        var kv = std.mem.splitSequence(u8, pair.?, "=");
+        if (kv.index == null) {
+            break;
+        }
+        const key: []const u8 = kv.next().?;
+        const value: []const u8 = kv.next().?;
+        self.querymap.put(key, value) catch break;
+    }
+    return self.querymap;
+}
+
+test "parse" {
+    var url = URL.init(.{});
+    const text = "http://example.com/path?query=1&query2=2";
+    const result = url.parse(text) catch return;
+    try testing.expectEqualStrings("http", result.scheme());
+    try testing.expectEqualStrings(
+        "example.com",
+        result.host(),
+    );
+    try testing.expectEqualStrings(
+        "/path",
+        result.path(),
+    );
+    try testing.expectEqualStrings("query=1&query2=2", result.query());
+
+    var querymap = result.queryMap();
+    try testing.expectEqualStrings("1", querymap.get("query").?);
+    try testing.expectEqualStrings("2", querymap.get("query2").?);
+
+    if (querymap.get("query3") != null) {
+        try testing.expect(false);
+    }
+}
