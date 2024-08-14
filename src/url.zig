@@ -41,7 +41,12 @@ pub fn path(self: *URL) []const u8 {
 }
 
 pub fn queryMap(self: *URL) StringHashMap([]const u8) {
-    var queryitmes = std.mem.splitSequence(u8, self.query(), "&");
+    self.querymap = parseQuery(self.query());
+    return self.querymap;
+}
+pub fn parseQuery(uri_query: []const u8) StringHashMap([]const u8) {
+    var querymap = StringHashMap([]const u8).init(std.heap.page_allocator);
+    var queryitmes = std.mem.splitSequence(u8, uri_query, "&");
     while (true) {
         const pair = queryitmes.next();
         if (pair == null) {
@@ -53,9 +58,9 @@ pub fn queryMap(self: *URL) StringHashMap([]const u8) {
         }
         const key: []const u8 = kv.next().?;
         const value: []const u8 = kv.next().?;
-        self.querymap.put(key, value) catch break;
+        querymap.put(key, value) catch break;
     }
-    return self.querymap;
+    return querymap;
 }
 
 test "parse" {
@@ -78,6 +83,15 @@ test "parse" {
     try testing.expectEqualStrings("2", querymap.get("query2").?);
 
     if (querymap.get("query3") != null) {
+        try testing.expect(false);
+    }
+
+    // query=1&query2=2
+    var qm = URL.parseQuery(result.query());
+    try testing.expectEqualStrings("1", qm.get("query").?);
+    try testing.expectEqualStrings("2", qm.get("query2").?);
+
+    if (qm.get("query3") != null) {
         try testing.expect(false);
     }
 }

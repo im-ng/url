@@ -2,6 +2,21 @@
 The URL features extension package is written in Zig.
 
 ### Usage.
+
+Adding to build.zig
+```zig
+    const url = b.dependency("url", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.root_module.addImport("url", url.module("url"));
+```
+
+Import it in your code:
+```zig 
+const URL = @import("url");
+```
+
 ```zig
     var url = URL.init(.{});
     const text = "http://example.com/path?query=1&query2=2";
