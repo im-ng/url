@@ -67,6 +67,7 @@ pub fn parseUrl(self: *URL, text: []const u8) ParseError!*URL {
     if ((reader.peek() orelse 0) == '?') { // query part
         std.debug.assert(reader.get().? == '?');
         self.query = reader.readUntil(isQuerySeparator);
+        self.querymap = parseQuery(self.query.?);
     }
 
     if ((reader.peek() orelse 0) == '#') { // fragment part

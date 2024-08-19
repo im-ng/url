@@ -81,6 +81,10 @@ test "RFC example 1" {
     var url = URL.init(.{});
     const result = url.parseUrl(text) catch return;
     try testing.expectEqualStrings("/over/there", result.path);
-    try testing.expectEqualStrings("name=ferret", result.query.?);
+    try testing.expectEqualStrings("name=ferret", @constCast(result.query.?));
     try testing.expectEqualStrings("nose", result.fragment.?);
+   
+    var qm = url.querymap.?;
+    defer qm.deinit();
+    try testing.expectEqualStrings("ferret", qm.get("name").?);
 }
