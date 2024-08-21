@@ -5,6 +5,8 @@ const Uri = std.Uri;
 const ParseError = std.Uri.ParseError;
 const StringHashMap = @import("std").StringHashMap;
 
+const Values = @import("values.zig").Values;
+
 pub const URL = @This();
 
 allocator: std.mem.Allocator = std.heap.page_allocator,
@@ -14,14 +16,15 @@ host: ?[]const u8 = undefined,
 path: []const u8 = "/",
 fragment: ?[]const u8 = undefined,
 query: ?[]const u8 = undefined,
-querymap: ?StringHashMap([]const u8) = StringHashMap([]const u8).init(std.heap.page_allocator),
+
+// querymap: ?StringHashMap(std.ArrayList([]const u8)) = StringHashMap(std.ArrayList([]const u8)).init(std.heap.page_allocator),
+values: ?std.StringHashMap(std.ArrayList([]const u8)) = std.StringHashMap(std.ArrayList([]const u8)).init(std.heap.page_allocator),
 
 // https://developer.mozilla.org/en-US/docs/Learn/Common_questions/Web_mechanics/What_is_a_URL
 
 pub fn init(self: URL) URL {
     return .{
         .allocator = self.allocator,
-        // .uri = self.uri,
         // .querymap = self.querymap,
     };
 }
@@ -67,7 +70,7 @@ pub fn parseUrl(self: *URL, text: []const u8) ParseError!*URL {
     if ((reader.peek() orelse 0) == '?') { // query part
         std.debug.assert(reader.get().? == '?');
         self.query = reader.readUntil(isQuerySeparator);
-        self.querymap = parseQuery(self.query.?);
+        try parseQuery(&self.values.?, self.query.?);
     }
 
     if ((reader.peek() orelse 0) == '#') { // fragment part
@@ -90,7 +93,7 @@ fn uriToUrl(self: *URL, uri: Uri) void {
 
     if (uri.query != null) {
         self.query = @constCast(uri.query.?.percent_encoded);
-        self.querymap = parseQuery(@constCast(uri.query.?.percent_encoded));
+        try parseQuery(&self.values.?, @constCast(uri.query.?.percent_encoded));
     }
     if (uri.fragment != null) {
         self.fragment = @constCast(uri.fragment.?.percent_encoded);
@@ -104,8 +107,7 @@ pub fn parseUri(self: *URL, text: []const u8) ParseError!*URL {
     return self;
 }
 
-pub fn parseQuery(uri_query: []const u8) StringHashMap([]const u8) {
-    var querymap = StringHashMap([]const u8).init(std.heap.page_allocator);
+pub fn parseQuery(map: *std.StringHashMap(std.ArrayList([]const u8)), uri_query: []const u8) !void {
     var queryitmes = std.mem.splitSequence(u8, uri_query, "&");
     while (true) {
         const pair = queryitmes.next();
@@ -114,19 +116,31 @@ pub fn parseQuery(uri_query: []const u8) StringHashMap([]const u8) {
         }
         var kv = std.mem.splitSequence(u8, pair.?, "=");
         if (kv.buffer.len == 0) {
-            break;
+            continue;
         }
         const key = kv.next();
         if (key == null) {
-            break;
+            continue;
         }
+
         const value = kv.next();
         if (value == null) {
-            break;
+            continue;
         }
-        querymap.put(key.?, value.?) catch break;
+
+        var al: std.ArrayList([]const u8) = undefined;
+        const v = map.get(key.?);
+        if (v == null) {
+            al = std.ArrayList([]const u8).init(std.heap.page_allocator);
+            al.append(value.?) catch continue;
+            map.put(key.?, al) catch continue;
+            continue;
+        }
+
+        al = v.?;
+        al.append(value.?) catch continue;
+        map.put(key.?, al) catch continue;
     }
-    return querymap;
 }
 
 fn isAuthoritySeparator(c: u8) bool {

@@ -21,10 +21,10 @@ test "parseUri 1" {
     );
     try testing.expectEqualStrings("query=1&query2=2", result.query.?);
 
-    var querymap = result.querymap.?;
+    var querymap = result.values.?;
     defer querymap.deinit();
-    try testing.expectEqualStrings("1", querymap.get("query").?);
-    try testing.expectEqualStrings("2", querymap.get("query2").?);
+    try testing.expectEqualStrings("1", querymap.get("query").?.items[0]);
+    try testing.expectEqualStrings("2", querymap.get("query2").?.items[0]);
 
     if (querymap.get("query3") != null) {
         try testing.expect(false);
@@ -32,10 +32,12 @@ test "parseUri 1" {
 
     // query=1&query2=2
 
-    var qm = URL.parseQuery(result.query.?);
+    var qm = std.StringHashMap(std.ArrayList([]const u8)).init(std.testing.allocator);
+    URL.parseQuery(&qm, result.query.?) catch return;
     defer qm.deinit();
-    try testing.expectEqualStrings("1", qm.get("query").?);
-    try testing.expectEqualStrings("2", qm.get("query2").?);
+
+    try testing.expectEqualStrings("1", qm.get("query").?.items[0]);
+    try testing.expectEqualStrings("2", qm.get("query2").?.items[0]);
 
     if (qm.get("query3") != null) {
         try testing.expect(false);
@@ -55,9 +57,10 @@ test "parseUri 2" {
         result.path,
     );
     try testing.expectEqualStrings("name=ferret", result.query.?);
-    var qm = url.querymap.?;
+    var qm = url.values.?;
     defer qm.deinit();
-    try testing.expectEqualStrings("ferret", qm.get("name").?);
+    const vm = qm.get("name").?;
+    try testing.expectEqualStrings("ferret", vm.items[0]);
     try testing.expectEqualStrings("nose", result.fragment.?);
 }
 
@@ -83,8 +86,9 @@ test "RFC example 1" {
     try testing.expectEqualStrings("/over/there", result.path);
     try testing.expectEqualStrings("name=ferret", @constCast(result.query.?));
     try testing.expectEqualStrings("nose", result.fragment.?);
-   
-    var qm = url.querymap.?;
+
+    var qm = url.values.?;
     defer qm.deinit();
-    try testing.expectEqualStrings("ferret", qm.get("name").?);
+    const vm = qm.get("name").?;
+    try testing.expectEqualStrings("ferret", vm.items[0]);
 }
