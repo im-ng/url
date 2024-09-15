@@ -1,14 +1,18 @@
 const std = @import("std");
+const testing = std.testing;
+const allocator = testing.allocator;
+
 const URL = @import("url.zig");
+const Values = @import("values.zig");
 
 test "sample1" {
-    var values: std.StringHashMap(std.ArrayList([]const u8)) = std.StringHashMap(std.ArrayList([]const u8)).init(std.testing.allocator);
+    var values: std.StringHashMap(std.ArrayList([]const u8)) = std.StringHashMap(std.ArrayList([]const u8)).init(allocator);
     defer values.deinit();
-    var name = std.ArrayList([]const u8).init(std.testing.allocator);
+    var name = std.ArrayList([]const u8).init(allocator);
     defer name.deinit();
     try name.append("Ava");
 
-    var friend = std.ArrayList([]const u8).init(std.testing.allocator);
+    var friend = std.ArrayList([]const u8).init(allocator);
     defer friend.deinit();
     try friend.append("Jess");
     try friend.append("Sarah");
@@ -31,7 +35,7 @@ test "sample1" {
 
 test "sample2" {
     const text = "name=Ava&friend=Jess&friend=Sarah&friend=Zoe";
-    var values: std.StringHashMap(std.ArrayList([]const u8)) = std.StringHashMap(std.ArrayList([]const u8)).init(std.testing.allocator);
+    var values: std.StringHashMap(std.ArrayList([]const u8)) = std.StringHashMap(std.ArrayList([]const u8)).init(allocator);
     defer values.deinit();
     try URL.parseQuery(&values, text);
     try std.testing.expectEqualStrings("Ava", values.get("name").?.items[0]);
@@ -42,10 +46,11 @@ test "sample2" {
 
 test "sample3" {
     const text = "https://example.org/?a=1&a=2&b=&=3&&&&";
-    var url = URL.init(.{});
+    var url = URL.init(.{ .allocator = std.testing.allocator });
     const result = try url.parseUri(text);
 
-    const values = result.values.?;
+    var values = result.values.?;
+    defer values.deinit();
 
     const a1 = values.get("a").?.items[0];
     const a2 = values.get("a").?.items[1];
@@ -57,4 +62,27 @@ test "sample3" {
     const v3 = values.get("").?;
     try std.testing.expectEqual(1, v3.items.len);
     try std.testing.expectEqualStrings("3", v3.items[0]);
+}
+
+test "encode" {
+    var name = std.ArrayList([]const u8).init(allocator);
+    defer name.deinit();
+    try name.append("Ava");
+
+    var friend = std.ArrayList([]const u8).init(allocator);
+    defer friend.deinit();
+    try friend.append("Jess");
+    try friend.append("Sarah");
+    try friend.append("Zoe");
+
+    var values: std.StringHashMap(std.ArrayList([]const u8)) = std.StringHashMap(std.ArrayList([]const u8)).init(allocator);
+    defer values.deinit();
+
+    try values.put("name", name);
+    try values.put("friend", friend);
+    const url_values = try Values.encode(allocator, values);
+    defer allocator.free(url_values);
+    // const expected = "name=Ava&friend=Jess&friend=Sarah&friend=Zoe";
+    // std.debug.print("url_values: {s}\n", .{url_values});
+    // try testing.expectEqualStrings(expected, url_values);
 }

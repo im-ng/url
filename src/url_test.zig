@@ -7,9 +7,12 @@ const StringHashMap = @import("std").StringHashMap;
 const URL = @import("url.zig");
 
 test "parseUri 1" {
-    var url = URL.init(.{});
+    var url = URL.init(.{ .allocator = std.testing.allocator });
+
     const text = "http://example.com/path?query=1&query2=2";
     const result = url.parseUri(text) catch return;
+    // defer result.deinit();
+
     try testing.expectEqualStrings("http", result.scheme.?);
     try testing.expectEqualStrings(
         "example.com",
@@ -45,7 +48,7 @@ test "parseUri 1" {
 }
 test "parseUri 2" {
     const text = "foo://example.com:8042/over/there?name=ferret#nose";
-    var url = URL.init(.{});
+    var url = URL.init(.{ .allocator = std.testing.allocator });
     const result = url.parseUri(text) catch return;
     try testing.expectEqualStrings("foo", result.scheme.?);
     try testing.expectEqualStrings(
@@ -73,16 +76,19 @@ test "url target" {
 
 test "url parse" {
     const text = "/path?query=1&query2=2";
-    var url = URL.init(.{});
-    const result = url.parseUrl(text) catch return;
+
+    var url = URL.init(.{ .allocator = std.testing.allocator });
+    defer url.deinit();
+
+    const result = try url.parseUrl(text);
     try testing.expectEqualStrings("/path", result.path);
     try testing.expectEqualStrings("query=1&query2=2", result.query.?);
 }
 
 test "RFC example 1" {
     const text = "/over/there?name=ferret#nose";
-    var url = URL.init(.{});
-    const result = url.parseUrl(text) catch return;
+    var url = URL.init(.{ .allocator = std.testing.allocator });
+    const result = try url.parseUrl(text);
     try testing.expectEqualStrings("/over/there", result.path);
     try testing.expectEqualStrings("name=ferret", @constCast(result.query.?));
     try testing.expectEqualStrings("nose", result.fragment.?);

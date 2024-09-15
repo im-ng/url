@@ -9,7 +9,8 @@ const Values = @import("values.zig").Values;
 
 pub const URL = @This();
 
-allocator: std.mem.Allocator = std.heap.page_allocator,
+allocator: std.mem.Allocator,
+
 uri: Uri = undefined,
 scheme: ?[]const u8 = undefined,
 host: ?[]const u8 = undefined,
@@ -17,16 +18,23 @@ path: []const u8 = "/",
 fragment: ?[]const u8 = undefined,
 query: ?[]const u8 = undefined,
 
-// querymap: ?StringHashMap(std.ArrayList([]const u8)) = StringHashMap(std.ArrayList([]const u8)).init(std.heap.page_allocator),
-values: ?std.StringHashMap(std.ArrayList([]const u8)) = std.StringHashMap(std.ArrayList([]const u8)).init(std.heap.page_allocator),
+// querymap: ?StringHashMap(std.ArrayList([]const u8))
+values: ?std.StringHashMap(std.ArrayList([]const u8)) = undefined,
 
 // https://developer.mozilla.org/en-US/docs/Learn/Common_questions/Web_mechanics/What_is_a_URL
 
 pub fn init(self: URL) URL {
     return .{
         .allocator = self.allocator,
-        // .querymap = self.querymap,
+        .values = std.StringHashMap(std.ArrayList([]const u8)).init(self.allocator),
     };
+}
+
+pub fn deinit(self: *URL) void {
+    if (self.values != null) {
+        self.values.?.deinit();
+    }
+    // self.allocator.destroy(self);
 }
 
 const SliceReader = struct {
@@ -93,7 +101,9 @@ fn uriToUrl(self: *URL, uri: Uri) void {
 
     if (uri.query != null) {
         self.query = @constCast(uri.query.?.percent_encoded);
-        try parseQuery(&self.values.?, @constCast(uri.query.?.percent_encoded));
+        if (self.values != null) {
+            try parseQuery(&self.values.?, @constCast(uri.query.?.percent_encoded));
+        }
     }
     if (uri.fragment != null) {
         self.fragment = @constCast(uri.fragment.?.percent_encoded);
@@ -108,6 +118,8 @@ pub fn parseUri(self: *URL, text: []const u8) ParseError!*URL {
 }
 
 pub fn parseQuery(map: *std.StringHashMap(std.ArrayList([]const u8)), uri_query: []const u8) !void {
+    const allocator = std.heap.page_allocator;
+
     var queryitmes = std.mem.splitSequence(u8, uri_query, "&");
     while (true) {
         const pair = queryitmes.next();
@@ -131,7 +143,7 @@ pub fn parseQuery(map: *std.StringHashMap(std.ArrayList([]const u8)), uri_query:
         var al: std.ArrayList([]const u8) = undefined;
         const v = map.get(key.?);
         if (v == null) {
-            al = std.ArrayList([]const u8).init(std.heap.page_allocator);
+            al = std.ArrayList([]const u8).init(allocator);
             al.append(value.?) catch continue;
             map.put(key.?, al) catch continue;
             continue;
