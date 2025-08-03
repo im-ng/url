@@ -1,7 +1,7 @@
 .{
     .name = .url,
     .fingerprint = 0xf47645aec2d0229e,
-    .version = "0.1.0",
+    .version = "0.1.1",
     .dependencies = .{},
     .paths = .{
         "build.zig",
