@@ -88,13 +88,13 @@ test "url parse" {
 test "RFC example 1" {
     const text = "/over/there?name=ferret#nose";
     var url = URL.init(.{ .allocator = std.testing.allocator });
+    defer url.deinit();
     const result = try url.parseUrl(text);
     try testing.expectEqualStrings("/over/there", result.path);
     try testing.expectEqualStrings("name=ferret", @constCast(result.query.?));
     try testing.expectEqualStrings("nose", result.fragment.?);
 
     var qm = url.values.?;
-    defer qm.deinit();
     const vm = qm.get("name").?;
     try testing.expectEqualStrings("ferret", vm.items[0]);
 }
