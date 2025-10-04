@@ -32,7 +32,7 @@ pub fn init(self: URL) URL {
 
 pub fn deinit(self: *URL) void {
     if (self.values != null) {
-        self.values.?.deinit();
+        self.values.?.clearAndFree();
     }
     // self.allocator.destroy(self);
 }
@@ -143,14 +143,14 @@ pub fn parseQuery(map: *std.StringHashMap(std.ArrayList([]const u8)), uri_query:
         var al: std.ArrayList([]const u8) = undefined;
         const v = map.get(key.?);
         if (v == null) {
-            al = std.ArrayList([]const u8).init(allocator);
-            al.append(value.?) catch continue;
+            al = std.ArrayList([]const u8).initCapacity(allocator, 0) catch continue;
+            al.append(allocator, value.?) catch continue;
             map.put(key.?, al) catch continue;
             continue;
         }
 
         al = v.?;
-        al.append(value.?) catch continue;
+        al.append(allocator, value.?) catch continue;
         map.put(key.?, al) catch continue;
     }
 }

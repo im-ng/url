@@ -25,7 +25,7 @@ test "parseUri 1" {
     try testing.expectEqualStrings("query=1&query2=2", result.query.?);
 
     var querymap = result.values.?;
-    defer querymap.deinit();
+    defer querymap.clearAndFree();
     try testing.expectEqualStrings("1", querymap.get("query").?.items[0]);
     try testing.expectEqualStrings("2", querymap.get("query2").?.items[0]);
 
@@ -37,7 +37,7 @@ test "parseUri 1" {
 
     var qm = std.StringHashMap(std.ArrayList([]const u8)).init(std.testing.allocator);
     URL.parseQuery(&qm, result.query.?) catch return;
-    defer qm.deinit();
+    defer qm.clearAndFree();
 
     try testing.expectEqualStrings("1", qm.get("query").?.items[0]);
     try testing.expectEqualStrings("2", qm.get("query2").?.items[0]);
@@ -61,7 +61,7 @@ test "parseUri 2" {
     );
     try testing.expectEqualStrings("name=ferret", result.query.?);
     var qm = url.values.?;
-    defer qm.deinit();
+    defer qm.clearAndFree();
     const vm = qm.get("name").?;
     try testing.expectEqualStrings("ferret", vm.items[0]);
     try testing.expectEqualStrings("nose", result.fragment.?);
