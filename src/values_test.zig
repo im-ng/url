@@ -8,15 +8,15 @@ const Values = @import("values.zig");
 test "sample1" {
     var values: std.StringHashMap(std.ArrayList([]const u8)) = std.StringHashMap(std.ArrayList([]const u8)).init(allocator);
     defer values.deinit();
-    var name = std.ArrayList([]const u8).init(allocator);
-    defer name.deinit();
-    try name.append("Ava");
+    var name = std.ArrayList([]const u8).initCapacity(allocator, 0) catch return;
+    defer name.deinit(allocator);
+    try name.append(allocator, "Ava");
 
-    var friend = std.ArrayList([]const u8).init(allocator);
-    defer friend.deinit();
-    try friend.append("Jess");
-    try friend.append("Sarah");
-    try friend.append("Zoe");
+    var friend = std.ArrayList([]const u8).initCapacity(allocator, 0) catch return;
+    defer friend.deinit(allocator);
+    try friend.append(allocator, "Jess");
+    try friend.append(allocator, "Sarah");
+    try friend.append(allocator, "Zoe");
 
     try values.put("name", name);
     try values.put("friend", friend);
@@ -65,15 +65,15 @@ test "sample3" {
 }
 
 test "encode" {
-    var name = std.ArrayList([]const u8).init(allocator);
-    defer name.deinit();
-    try name.append("Ava");
+    var name = std.ArrayList([]const u8).initCapacity(allocator, 0) catch return;
+    defer name.deinit(allocator);
+    try name.append(allocator, "Ava");
 
-    var friend = std.ArrayList([]const u8).init(allocator);
-    defer friend.deinit();
-    try friend.append("Jess");
-    try friend.append("Sarah");
-    try friend.append("Zoe");
+    var friend = std.ArrayList([]const u8).initCapacity(allocator, 0) catch return;
+    defer friend.deinit(allocator);
+    try friend.append(allocator, "Jess");
+    try friend.append(allocator, "Sarah");
+    try friend.append(allocator, "Zoe");
 
     var values: std.StringHashMap(std.ArrayList([]const u8)) = std.StringHashMap(std.ArrayList([]const u8)).init(allocator);
     defer values.deinit();

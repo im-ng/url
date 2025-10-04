@@ -32,7 +32,7 @@ pub fn init(self: URL) URL {
 
 pub fn deinit(self: *URL) void {
     if (self.values != null) {
-        self.values.?.deinit();
+        self.values.?.clearAndFree();
     }
     // self.allocator.destroy(self);
 }
@@ -58,7 +58,10 @@ const SliceReader = struct {
     fn readUntil(self: *Self, comptime predicate: fn (u8) bool) []const u8 {
         const start = self.offset;
         var end = start;
-        while (end < self.slice.len and !predicate(self.slice[end])) {
+        while (end < self.slice.len) {
+            if (predicate(self.slice[end])) {
+                break;
+            }
             end += 1;
         }
         self.offset = end;
@@ -78,6 +81,9 @@ pub fn parseUrl(self: *URL, text: []const u8) ParseError!*URL {
     if ((reader.peek() orelse 0) == '?') { // query part
         std.debug.assert(reader.get().? == '?');
         self.query = reader.readUntil(isQuerySeparator);
+        if (self.values == null) {
+            self.values = std.StringHashMap(std.ArrayList([]const u8)).init(self.allocator);
+        }
         try parseQuery(&self.values.?, self.query.?);
     }
 
@@ -143,14 +149,14 @@ pub fn parseQuery(map: *std.StringHashMap(std.array_list.Managed([]const u8)), u
         var al: std.array_list.Managed([]const u8) = undefined;
         const v = map.get(key.?);
         if (v == null) {
-            al = std.array_list.Managed([]const u8).init(allocator);
-            al.append(value.?) catch continue;
+            al = std.ArrayList([]const u8).initCapacity(allocator, 0) catch continue;
+            al.append(allocator, value.?) catch continue;
             map.put(key.?, al) catch continue;
             continue;
         }
 
         al = v.?;
-        al.append(value.?) catch continue;
+        al.append(allocator, value.?) catch continue;
         map.put(key.?, al) catch continue;
     }
 }
