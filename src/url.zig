@@ -58,7 +58,10 @@ const SliceReader = struct {
     fn readUntil(self: *Self, comptime predicate: fn (u8) bool) []const u8 {
         const start = self.offset;
         var end = start;
-        while (end < self.slice.len and !predicate(self.slice[end])) {
+        while (end < self.slice.len) {
+            if (predicate(self.slice[end])) {
+                break;
+            }
             end += 1;
         }
         self.offset = end;
@@ -78,6 +81,9 @@ pub fn parseUrl(self: *URL, text: []const u8) ParseError!*URL {
     if ((reader.peek() orelse 0) == '?') { // query part
         std.debug.assert(reader.get().? == '?');
         self.query = reader.readUntil(isQuerySeparator);
+        if (self.values == null) {
+            self.values = std.StringHashMap(std.ArrayList([]const u8)).init(self.allocator);
+        }
         try parseQuery(&self.values.?, self.query.?);
     }
 

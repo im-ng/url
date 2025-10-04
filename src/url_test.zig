@@ -98,3 +98,56 @@ test "RFC example 1" {
     const vm = qm.get("name").?;
     try testing.expectEqualStrings("ferret", vm.items[0]);
 }
+
+test "edge case - empty path" {
+    const text = "";
+    var url = URL.init(.{ .allocator = std.testing.allocator });
+    defer url.deinit();
+    const result = try url.parseUrl(text);
+    try testing.expectEqualStrings("", result.path);
+}
+
+test "edge case - path only" {
+    const text = "/path";
+    var url = URL.init(.{ .allocator = std.testing.allocator });
+    defer url.deinit();
+    const result = try url.parseUrl(text);
+    try testing.expectEqualStrings("/path", result.path);
+}
+
+test "edge case - path at end of string" {
+    const text = "/very/long/path/that/ends/without/query/or/fragment";
+    var url = URL.init(.{ .allocator = std.testing.allocator });
+    defer url.deinit();
+    const result = try url.parseUrl(text);
+    try testing.expectEqualStrings("/very/long/path/that/ends/without/query/or/fragment", result.path);
+}
+
+test "edge case - single character" {
+    const text = "a";
+    var url = URL.init(.{ .allocator = std.testing.allocator });
+    defer url.deinit();
+    const result = try url.parseUrl(text);
+    try testing.expectEqualStrings("a", result.path);
+}
+
+test "boundary condition - path at string end" {
+    // This test specifically targets the boundary condition that was causing segfault
+    const text = "/api/users";
+    var url = URL.init(.{ .allocator = std.testing.allocator });
+    defer url.deinit();
+    const result = try url.parseUrl(text);
+    try testing.expectEqualStrings("/api/users", result.path);
+    // Note: query and fragment are undefined by default, not null
+    // We just need to ensure the path is parsed correctly
+}
+
+test "boundary condition - path with query at end" {
+    const text = "/api/users?name=john";
+    var url = URL.init(.{ .allocator = std.testing.allocator });
+    defer url.deinit();
+    const result = try url.parseUrl(text);
+    try testing.expectEqualStrings("/api/users", result.path);
+    try testing.expectEqualStrings("name=john", result.query.?);
+    // Note: fragment is undefined by default, not null
+}
